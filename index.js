@@ -79,6 +79,22 @@ sql
       }
     });
 
+    app.get("/api/getdrafr", async (req, res) => {
+      const variant = req.params.variant; // Get MachineType from URL
+
+      const query = `SELECT * FROM parameter_qc_inputed WHERE Completed = 'false' order by Create_At asc`;
+      try {
+        const pool = await sql.connect(dbConfig); // Ensure pool is properly configured
+        const result = await pool.request().query(query); // Execute the query here
+
+        // Send the query result as JSON
+        res.json(result.recordset);
+      } catch (error) {
+        console.error("SQL error", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+
     app.post("/api/post-param", async (req, res) => {
       const {
         bact_number,
