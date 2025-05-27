@@ -130,26 +130,38 @@ sql
       }
     });
 
-    app.get("/api/getqc-inputed/:Filler/:prodname", async (req, res) => {
-      const Filler = req.params.Filler; // Get MachineType from URL
-      const prodname = req.params.prodname;
+    app.get(
+      "/api/getqc-inputed/:Filler/:prodname/:proddate",
+      async (req, res) => {
+        const Filler = req.params.Filler; // Get MachineType from URL
+        const prodname = req.params.prodname;
+        const proddate = req.params.proddate;
+        console.log("prord date : ", proddate);
 
-      const query = `SELECT * FROM qc_sample_inputed WHERE Filler = @Filler AND Product_Name = @prodname`;
-      try {
-        const pool = await sql.connect(dbConfig); // Ensure pool is properly configured
-        const result = await pool
-          .request()
-          .input("Filler", sql.VarChar, Filler || null)
-          .input("prodname", sql.VarChar, prodname || null)
-          .query(query); // Execute the query here
+        // Format tanggal ke YYYY-MM-DD
+        const parsedDate = new Date(proddate);
+        const formattedDate = parsedDate.toISOString().split("T")[0]; // contoh hasil: 2025-05-27
 
-        // Send the query result as JSON
-        res.json(result.recordset);
-      } catch (error) {
-        console.error("SQL error", error);
-        res.status(500).send("Internal Server Error");
+        console.log("Formatted proddate: ", formattedDate);
+
+        const query = `SELECT * FROM qc_sample_inputed WHERE Filler = @Filler AND Product_Name = @prodname and Production_Date = @formattedDate`;
+        try {
+          const pool = await sql.connect(dbConfig); // Ensure pool is properly configured
+          const result = await pool
+            .request()
+            .input("Filler", sql.VarChar, Filler || null)
+            .input("prodname", sql.VarChar, prodname || null)
+            .input("formattedDate", sql.VarChar, formattedDate || null)
+            .query(query); // Execute the query here
+
+          // Send the query result as JSON
+          res.json(result.recordset);
+        } catch (error) {
+          console.error("SQL error", error);
+          res.status(500).send("Internal Server Error");
+        }
       }
-    });
+    );
 
     app.post("/api/post-param", async (req, res) => {
       const {
