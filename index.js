@@ -596,6 +596,91 @@ sql
     console.error("Database connection failed", err);
   });
 
+app.get("/api/getsubmitedForBatch", async (req, res) => {
+  const query = `
+    WITH RankedData AS (
+      SELECT *,
+        ROW_NUMBER() OVER (
+          PARTITION BY
+            Variant,
+            Product_Name,
+            Production_Date,
+            Expiry_Date,
+            Filler,
+            Start_Production,
+            Last_Production,
+            Product_Size,
+            Completed
+          ORDER BY Create_At DESC
+        ) AS rn
+      FROM parameter_qc_inputed
+      WHERE Completed = 'true'
+    )
+    SELECT *
+    FROM RankedData
+    WHERE rn = 1 AND Batch_Number IS NULL
+    ORDER BY Create_At ASC
+  `;
+
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request().query(query);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error("SQL error", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+app.post("/api/updateBatchNumber", async (req, res) => {
+  const {
+    Batch_Number,
+    Variant,
+    Product_Name,
+    Production_Date,
+    Expiry_Date,
+    Filler,
+    Start_Production,
+    Last_Production,
+    Product_Size,
+  } = req.body;
+
+  const query = `
+    UPDATE parameter_qc_inputed
+    SET Batch_Number = @Batch_Number
+    WHERE Completed = 'true'
+      AND Variant = @Variant
+      AND Product_Name = @Product_Name
+      AND Production_Date = @Production_Date
+      AND Expiry_Date = @Expiry_Date
+      AND Filler = @Filler
+      AND Start_Production = @Start_Production
+      AND Last_Production = @Last_Production
+      AND Product_Size = @Product_Size
+  `;
+
+  try {
+    const pool = await sql.connect(dbConfig);
+    await pool
+      .request()
+      .input("Batch_Number", sql.VarChar, Batch_Number)
+      .input("Variant", sql.VarChar, Variant)
+      .input("Product_Name", sql.VarChar, Product_Name)
+      .input("Production_Date", sql.Date, Production_Date)
+      .input("Expiry_Date", sql.Date, Expiry_Date)
+      .input("Filler", sql.VarChar, Filler)
+      .input("Start_Production", sql.Time, Start_Production)
+      .input("Last_Production", sql.Time, Last_Production)
+      .input("Product_Size", sql.VarChar, Product_Size)
+      .query(query);
+
+    res.status(200).json({ message: "Batch_Number updated successfully" });
+  } catch (error) {
+    console.error("SQL error", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Start the Express server
 const PORT = 5008;
 app.listen(PORT, () => {
