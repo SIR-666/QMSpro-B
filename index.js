@@ -177,6 +177,7 @@ sql
         last_production,
         product_size,
         completed,
+        group,
       } = req.body;
 
       // Validasi input
@@ -231,7 +232,8 @@ sql
         Last_Production,
         Product_Size,
         Create_At,
-        Completed
+        Completed,
+        [Group]
       )
       VALUES (
         @bact_number,
@@ -246,7 +248,8 @@ sql
         @last_production,
         @product_size,
         GETDATE(),
-        @completed
+        @completed,
+        @group
       );
     `;
 
@@ -264,6 +267,7 @@ sql
           .input("last_production", sql.VarChar, last_production || null)
           .input("product_size", sql.VarChar, product_size || null)
           .input("completed", sql.VarChar, completed || null)
+          .input("group", sql.Int, group || null)
           .query(insertQuery);
 
         res.status(200).json({ message: "Berhasil menyimpan parameter QC" });
