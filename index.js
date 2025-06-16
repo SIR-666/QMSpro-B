@@ -2,6 +2,7 @@ const express = require("express");
 const sql = require("mssql");
 const cors = require("cors"); // Import the cors package
 const path = require("path");
+const { sendFCMNotification } = require("./fcm");
 
 // MSSQL Database configuration
 const dbConfig = {
@@ -28,6 +29,32 @@ sql
   .then((pool) => {
     console.log("Connected to MSSQL");
 
+    app.get("/api/send-draft-notif", async (req, res) => {
+      try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query(`
+          SELECT DISTINCT Filler FROM parameter_qc_inputed WHERE Completed = 'false'
+        `);
+
+        const lines = result.recordset.map((row) => row.Filler);
+        if (lines.length === 0) {
+          return res.json({ success: true, message: "No draft found" });
+        }
+
+        // Ambil token FCM user (contoh: dari client atau dari database)
+        const userFcmToken = req.query.token || "ISI_TOKEN_KAMU_DI_SINI"; // Sesuaikan ini
+
+        const title = "Draft Belum Diselesaikan";
+        const body = `Terdapat draft di line: ${lines.join(", ")}`;
+
+        await sendFCMNotification(userFcmToken, title, body);
+
+        res.json({ success: true, message: "Notif dikirim", lines });
+      } catch (err) {
+        console.error("Error sending notif:", err);
+        res.status(500).json({ success: false, error: err.message });
+      }
+    });
     // API route to get transition counts and time differences
     app.get("/api/getlistparma/:variant", async (req, res) => {
       const variant = req.params.variant; // Get MachineType from URL
