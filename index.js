@@ -609,10 +609,7 @@ app.get("/api/getsubmitedForBatch", async (req, res) => {
             Variant,
             Product_Name,
             Production_Date,
-            Expiry_Date,
             Filler,
-            Start_Production,
-            Last_Production,
             Product_Size,
             Completed
           ORDER BY Create_At DESC
