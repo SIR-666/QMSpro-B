@@ -89,7 +89,7 @@ sql
 
       const query = `
         SELECT * FROM SKUlist 
-        WHERE Type LIKE '%' + @variant + '%'
+        WHERE Type LIKE '%' + @variant + '%' ORDER BY Type DESC,Prod ASC
       `;
       try {
         const pool = await sql.connect(dbConfig); // Ensure pool is properly configured
@@ -125,7 +125,7 @@ sql
     app.get("/api/getsubmited", async (req, res) => {
       const variant = req.params.variant; // Get MachineType from URL
 
-      const query = `SELECT * FROM parameter_qc_inputed WHERE Completed = 'true' order by Create_At asc`;
+      const query = `SELECT * FROM parameter_qc_inputed WHERE Completed = 'true' order by Create_At desc`;
       try {
         const pool = await sql.connect(dbConfig); // Ensure pool is properly configured
         const result = await pool.request().query(query); // Execute the query here
@@ -171,7 +171,7 @@ sql
 
         console.log("Formatted proddate: ", formattedDate);
 
-        const query = `SELECT * FROM qc_sample_inputed WHERE Filler = @Filler AND Product_Name = @prodname and Production_Date = @formattedDate`;
+        const query = `SELECT * FROM qc_sample_inputed WHERE Filler = @Filler AND Product_Name = @prodname and Production_Date = @formattedDate order by Timer`;
         try {
           const pool = await sql.connect(dbConfig); // Ensure pool is properly configured
           const result = await pool
