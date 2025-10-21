@@ -205,6 +205,7 @@ sql
         product_size,
         completed,
         group,
+        status,
       } = req.body;
 
       console.log("completed :", completed);
@@ -261,7 +262,8 @@ sql
         Product_Size,
         Create_At,
         Completed,
-        [Group]
+        [Group],
+        Status
       )
       VALUES (
         @bact_number,
@@ -277,7 +279,8 @@ sql
         @product_size,
         GETDATE(),
         @completed,
-        @group
+        @group,
+        @status
       );
     `;
 
@@ -296,6 +299,7 @@ sql
           .input("product_size", sql.VarChar, product_size || null)
           .input("completed", sql.VarChar, completed || null)
           .input("group", sql.Int, group || null)
+          .input("status", sql.VarChar, status || null)
           .query(insertQuery);
 
         res.status(200).json({ message: "Berhasil menyimpan parameter QC" });
@@ -321,7 +325,6 @@ sql
         last_production,
         product_size,
         completed,
-        status,
       } = req.body;
 
       // Validasi input
@@ -345,8 +348,7 @@ sql
       Last_Production,
       Product_Size,
       Create_At,
-      Completed,
-      Status
+      Completed
     )
     VALUES (
       @bact_number,
@@ -361,8 +363,7 @@ sql
       @last_production,
       @product_size,
       GETDATE(),
-      @completed,
-      @status
+      @completed
     );
   `;
 
@@ -382,7 +383,6 @@ sql
           .input("last_production", sql.VarChar, last_production || null)
           .input("product_size", sql.VarChar, product_size || null)
           .input("completed", sql.VarChar, completed || null)
-          .input("completed", sql.VarChar, status || null)
           .query(query);
 
         res.status(200).json({ message: "Berhasil menyimpan parameter QC" });
@@ -551,6 +551,106 @@ sql
         console.error("SQL Error:", error);
         res.status(500).json({
           message: "Terjadi kesalahan saat menyimpan data",
+          error: error.message,
+        });
+      }
+    });
+
+    app.post("/api/delete-sample", async (req, res) => {
+      const {
+        variant,
+        prod,
+        production_date,
+        expiry_date,
+        filler,
+        product_size,
+        timer,
+      } = req.body;
+
+      // Validasi input wajib
+      if (!variant || !prod) {
+        return res.status(400).json({
+          message: "Field bact_number, variant, dan prod wajib diisi",
+        });
+      }
+
+      const query = `
+    DELETE FROM dbo.qc_sample_inputed
+    WHERE Variant = @variant
+      AND Product_Name = @prod
+      AND CAST(Production_Date AS date) = @production_date
+      AND (@filler IS NULL OR Filler = @filler)
+      AND CAST([Timer] AS time(3)) = @timer;
+  `;
+  
+
+      try {
+        const pool = await sql.connect(dbConfig);
+        await pool
+          .request()
+          
+          .input("variant", sql.VarChar, variant)
+          .input("prod", sql.VarChar, prod)
+          .input("production_date", sql.Date, production_date || null)
+          .input("filler", sql.VarChar, filler || null)
+          .input("timer", sql.Time, timer || null)
+          .query(query);
+        // --- LOG: text query + params ---
+        const q = (v) => v == null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`;
+        const dateOnly = (d) => d ? new Date(d).toISOString().slice(0,10) : null; // "YYYY-MM-DD"
+
+        const debugSql =
+          query
+            .replace(/@variant\b/g, q(variant))
+            .replace(/@prod\b/g, q(prod))
+            .replace(/@production_date\b/g, q(dateOnly(production_date)))
+            .replace(/@filler\b/g, q(filler))
+            .replace(/@timer\b/g, q(timer)); // kirim "HH:mm:ss" atau "HH:mm:ss.fff"
+
+        console.log("[DEBUG SQL]", debugSql);
+
+        res.status(200).json({ message: "Berhasil delete parameter QC" });
+      } catch (error) {
+        console.error("SQL Error:", error);
+        res.status(500).json({
+          message: "Terjadi kesalahan saat delete data",
+          error: error.message,
+        });
+      }
+    });
+
+    app.post("/api/delete-paraminput", async (req, res) => {
+      const {
+        Id
+      } = req.body;
+      console.log("delete id : ",Id);
+      // Validasi input wajib
+      if (!Id) {
+        return res.status(400).json({
+          message: "Field id wajib diisi",
+        });
+      }
+
+      const query = `
+    DELETE FROM dbo.parameter_qc_inputed
+    WHERE Id= @id;
+  `;
+  
+
+      try {
+        const pool = await sql.connect(dbConfig);
+        await pool
+          .request()
+          
+          .input("id", sql.Int, Id)
+          .query(query);
+       
+
+        res.status(200).json({ message: "Berhasil delete parameter QC" });
+      } catch (error) {
+        console.error("SQL Error:", error);
+        res.status(500).json({
+          message: "Terjadi kesalahan saat delete data",
           error: error.message,
         });
       }
